@@ -29,6 +29,8 @@ app.post('/chat', async (req, res) => {
     });
 
     const data = await response.json();
+    console.log("OpenRouter API Response:", data);  // Add this to debug response
+
     const reply = data.choices?.[0]?.message?.content || "Sorry, no reply received.";
     res.json({ reply });
 
