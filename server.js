@@ -14,7 +14,8 @@ app.post('/chat', async (req, res) => {
   const { message } = req.body;
 
   try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    // First check OpenRouter API (DeepSeek)
+    const openRouterResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -28,10 +29,26 @@ app.post('/chat', async (req, res) => {
       })
     });
 
-    const data = await response.json();
-    console.log("OpenRouter API Response:", data);  // Add this to debug response
+    const openRouterData = await openRouterResponse.json();
+    console.log("OpenRouter API Response:", openRouterData);  // Add this to debug response
 
-    const reply = data.choices?.[0]?.message?.content || "Sorry, no reply received.";
+    let reply = openRouterData.choices?.[0]?.message?.content || "Sorry, no reply received.";
+
+    // If OpenRouter doesn't provide a response, fallback to HuggingFace API (optional)
+    if (reply === "Sorry, no reply received.") {
+      const huggerResponse = await fetch("https://api-inference.huggingface.co/models/gpt-2", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ inputs: message })
+      });
+
+      const huggerData = await huggerResponse.json();
+      reply = huggerData?.generated_text || "Sorry, no response from HuggingFace model.";
+    }
+
     res.json({ reply });
 
   } catch (error) {
