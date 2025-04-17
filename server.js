@@ -1,5 +1,3 @@
-require('dotenv').config(); // Load .env file
-
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
@@ -10,16 +8,19 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Manually add your OpenRouter API key here
+const OPENROUTER_API_KEY = 'your-openrouter-api-key-here';  // Replace with your actual OpenRouter API key
+
 app.post('/chat', async (req, res) => {
   const { message } = req.body;
 
   try {
-    // First check OpenRouter API (DeepSeek)
+    // OpenRouter API (DeepSeek)
     const openRouterResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
         "HTTP-Referer": "https://wtichataidemo.rf.gd",
         "X-Title": "WTIChat AI"
       },
