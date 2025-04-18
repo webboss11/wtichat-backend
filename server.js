@@ -1,6 +1,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const fetch = require("node-fetch");
 require("dotenv").config();
 
 const app = express();
@@ -47,23 +48,27 @@ app.post("/", async (req, res) => {
 
     // Fallback to HuggingFace
     if (finalResponse === "Sorry, I couldn't respond right now.") {
-      const huggingRes = await fetch(
-        "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ inputs: userMessage }),
-        }
-      );
+      try {
+        const huggingRes = await fetch(
+          "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ inputs: userMessage }),
+          }
+        );
 
-      const data = await huggingRes.json();
-      if (Array.isArray(data) && data[0]?.generated_text) {
-        finalResponse = data[0].generated_text;
-      } else if (typeof data.generated_text === "string") {
-        finalResponse = data.generated_text;
+        const data = await huggingRes.json();
+        if (Array.isArray(data) && data[0]?.generated_text) {
+          finalResponse = data[0].generated_text;
+        } else if (typeof data.generated_text === "string") {
+          finalResponse = data.generated_text;
+        }
+      } catch (err) {
+        console.error("HuggingFace failed too.", err);
       }
     }
 
@@ -71,6 +76,36 @@ app.post("/", async (req, res) => {
   } catch (err) {
     console.error("Final error:", err);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.post("/generate-image", async (req, res) => {
+  const { prompt } = req.body;
+  if (!prompt) return res.status(400).json({ error: "Prompt is required" });
+
+  try {
+    const response = await fetch("https://api.stability.ai/v2beta/stable-image/generate/core", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.STABILITY_API_KEY}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        prompt,
+        output_format: "url",
+      }),
+    });
+
+    const data = await response.json();
+    if (data?.image && typeof data.image === "string") {
+      res.json({ imageUrl: data.image });
+    } else {
+      res.status(500).json({ error: "Image generation failed.", details: data });
+    }
+  } catch (err) {
+    console.error("Image generation error:", err);
+    res.status(500).json({ error: "Image generation error" });
   }
 });
 
