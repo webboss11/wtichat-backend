@@ -18,7 +18,7 @@ app.post("/", async (req, res) => {
   try {
     let finalResponse = "Sorry, I couldn't respond right now.";
 
-    // First try OpenRouter (DeepSeek or Mistral)
+    // Try OpenRouter
     try {
       const openrouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -29,27 +29,35 @@ app.post("/", async (req, res) => {
         body: JSON.stringify({
           model: "deepseek/deepseek-chat",
           messages: [
-            { role: "system", content: "You are WTIChat, a smart Indian AI assistant that can reply with formatted answers, code, diagrams or ideas." },
+            {
+              role: "system",
+              content:
+                "You are WTIChat, a smart Indian AI assistant that can reply with formatted answers, code, diagrams or ideas.",
+            },
             { role: "user", content: userMessage },
           ],
         }),
       });
+
       const data = await openrouterRes.json();
       finalResponse = data.choices?.[0]?.message?.content || finalResponse;
     } catch (err) {
       console.error("OpenRouter failed, trying HuggingFace...", err);
     }
 
-    // If OpenRouter fails, fallback to HuggingFace
+    // Fallback to HuggingFace
     if (finalResponse === "Sorry, I couldn't respond right now.") {
-      const huggingRes = await fetch("https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ inputs: userMessage }),
-      });
+      const huggingRes = await fetch(
+        "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ inputs: userMessage }),
+        }
+      );
 
       const data = await huggingRes.json();
       if (Array.isArray(data) && data[0]?.generated_text) {
@@ -67,5 +75,5 @@ app.post("/", async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
+  console.log(`✅ Server listening on port ${port}`);
 });
